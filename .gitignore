@@ -44,3 +44,16 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /android/build
+
+
+# Linux build artifacts
+/linux/flutter/
+/linux/runner/
+
+# Windows build artifacts
+/windows/flutter/
+/windows/runner/
+
+# macOS build artifacts
+/macos/Flutter/
+/macos/Runner/
