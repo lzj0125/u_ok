@@ -14,9 +14,9 @@ class AppConstants {
   static const Map<int, String> emotionLabels = {1: '焦虑', 2: '身心劳累', 3: '抑郁'};
 
   static const Map<int, Color> emotionColors = {
-    1: Colors.orangeAccent, // 焦虑
-    2: Colors.blueGrey, // 劳累
-    3: Colors.indigo, // 抑郁
+    1: Color(0xFFFF9F43), // 焦虑 - 温暖橙色
+    2: Color(0xFF5F9EA0), // 劳累 - 柔和蓝绿
+    3: Color(0xFF6C5CE7), // 抑郁 - 优雅紫色
   };
 
   static const Map<int, String> timePeriods = {
