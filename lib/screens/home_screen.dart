@@ -3,34 +3,140 @@ import 'package:provider/provider.dart';
 import 'record_screen.dart';
 import 'insights_screen.dart';
 import 'settings_screen.dart';
+import 'quick_release_screen.dart';
+import 'achievements_screen.dart';
+import 'emotion_growth_tree.dart';
 import '../providers/app_state_provider.dart';
 import '../widgets/pro_lock_overlay.dart';
+import '../utils/daily_checkin.dart';
+import '../services/achievement_service.dart';
+import '../models/achievement.dart';
+import '../screens/dashboard_screen.dart';
+import '../screens/insights_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   int _currentIndex = 0;
+  int _checkInStreak = 0;
+  UserStats? _userStats;
+  late AnimationController _fadeController;
+  late AnimationController _scaleController;
 
-  final List<Widget> _pages = [
-    DashboardScreen(),
-    InsightsScreenPlaceholder(),
-    SettingsScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fadeController = AnimationController(
+      duration: Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _scaleController = AnimationController(
+      duration: Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _loadData();
+    _fadeController.forward();
+    _scaleController.forward();
+  }
+
+  Future<void> _loadData() async {
+    final streak = await DailyCheckIn.getCurrentStreak();
+    final stats = await AchievementService.instance.getUserStats();
+    setState(() {
+      _checkInStreak = streak;
+      _userStats = stats;
+    });
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _scaleController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _showCheckInDialog() async {
+    final canCheckIn = await DailyCheckIn.canCheckIn();
+
+    if (!canCheckIn) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 12),
+              Text('今天已经签到过了，明天再来吧！'),
+            ],
+          ),
+          backgroundColor: Color(0xFF2DD4BF),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      return;
+    }
+
+    final result = await showDialog(
+      context: context,
+      builder: (_) => CheckInDialog(),
+    );
+
+    if (result == true) {
+      _loadData();
+    }
+  }
+
+  void _navigateToRecord() {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => RecordScreen()));
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: [
+          DashboardScreen(
+            checkInStreak: _checkInStreak,
+            userStats: _userStats,
+            onCheckIn: _showCheckInDialog,
+            fadeController: _fadeController,
+            scaleController: _scaleController,
+            onRefresh: _loadData,
+          ),
+          InsightsScreen(),
+          SettingsScreen(),
+        ],
+      ),
+      floatingActionButton: ScaleTransition(
+        scale: Tween<double>(begin: 1.0, end: 1.1).animate(
+          CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: _navigateToRecord,
+          backgroundColor: Color(0xFF2DD4BF),
+          foregroundColor: Colors.white,
+          elevation: 8,
+          icon: Icon(Icons.add_rounded, size: 28),
+          label: Text(
+            '记录情绪',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 20,
               offset: Offset(0, -5),
             ),
           ],
@@ -47,134 +153,28 @@ class _HomeScreenState extends State<HomeScreen> {
           elevation: 0,
           selectedItemColor: Color(0xFF2DD4BF),
           unselectedItemColor: Colors.grey[400],
+          selectedFontSize: 12,
+          unselectedFontSize: 11,
           items: [
             BottomNavigationBarItem(
               icon: Icon(Icons.home_rounded),
+              activeIcon: AnimatedContainer(
+                duration: Duration(milliseconds: 300),
+                child: Icon(Icons.home_rounded, size: 28),
+              ),
               label: '首页',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.insights_rounded),
+              activeIcon: Icon(Icons.insights_rounded, size: 28),
               label: '洞察',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.settings_rounded),
+              activeIcon: Icon(Icons.settings_rounded, size: 28),
               label: '设置',
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class DashboardScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(height: 20),
-            Text(
-              '今天感觉如何？',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937),
-              ),
-            ),
-            SizedBox(height: 8),
-            Text(
-              '记录你的情绪，发现内心的声音',
-              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
-            ),
-            Spacer(),
-            Center(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => RecordScreen()),
-                  );
-                },
-                child: Container(
-                  width: 200,
-                  height: 200,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Color(0xFF2DD4BF), Color(0xFF14B8A6)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Color(0xFF2DD4BF).withOpacity(0.3),
-                        blurRadius: 30,
-                        offset: Offset(0, 10),
-                      ),
-                    ],
-                  ),
-                  child: Icon(Icons.add_rounded, size: 80, color: Colors.white),
-                ),
-              ),
-            ),
-            Spacer(),
-            Container(
-              padding: EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: Offset(0, 5),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.lightbulb_outline, color: Color(0xFF2DD4BF)),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '连续记录7天，解锁深度分析功能',
-                      style: TextStyle(fontSize: 14, color: Colors.grey[700]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 20),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class InsightsScreenPlaceholder extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final isPro = Provider.of<AppStateProvider>(context).isPro;
-
-    return ProLockOverlay(
-      isPro: isPro,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text('洞察分析'),
-          elevation: 0,
-          backgroundColor: Colors.transparent,
-          foregroundColor: Color(0xFF1F2937),
-        ),
-        body: Center(
-          child: Text(
-            '这里是热力图、词云和趋势曲线...',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
         ),
       ),
     );

@@ -19,7 +19,12 @@ class DatabaseService {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _upgradeDB,
+    );
   }
 
   Future _createDB(Database db, int version) async {
@@ -27,7 +32,6 @@ class DatabaseService {
     const textType = 'TEXT';
     const intType = 'INTEGER';
 
-    // 创建情绪记录表
     await db.execute('''
       CREATE TABLE records (
         id $idType,
@@ -42,7 +46,6 @@ class DatabaseService {
       )
     ''');
 
-    // 创建侦探追问表
     await db.execute('''
       CREATE TABLE detective_logs (
         id $idType,
@@ -54,21 +57,48 @@ class DatabaseService {
         FOREIGN KEY (record_id) REFERENCES records (id) ON DELETE CASCADE
       )
     ''');
+
+    await db.execute('''
+      CREATE TABLE achievements (
+        id $textType PRIMARY KEY,
+        title $textType NOT NULL,
+        description $textType NOT NULL,
+        icon $textType NOT NULL,
+        is_unlocked $intType DEFAULT 0,
+        unlocked_at $textType
+      )
+    ''');
   }
 
-  // 插入情绪记录并返回ID
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      const idType = 'INTEGER PRIMARY KEY AUTOINCREMENT';
+      const textType = 'TEXT';
+      const intType = 'INTEGER';
+
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS achievements (
+          id $textType PRIMARY KEY,
+          title $textType NOT NULL,
+          description $textType NOT NULL,
+          icon $textType NOT NULL,
+          is_unlocked $intType DEFAULT 0,
+          unlocked_at $textType
+        )
+      ''');
+    }
+  }
+
   Future<int> insertRecord(EmotionRecord record) async {
     final db = await instance.database;
     return await db.insert('records', record.toMap());
   }
 
-  // 插入侦探日志
   Future<int> insertDetectiveLog(DetectiveLog log) async {
     final db = await instance.database;
     return await db.insert('detective_logs', log.toMap());
   }
 
-  // 获取所有记录（简化版，实际需分页）
   Future<List<EmotionRecord>> getAllRecords() async {
     final db = await instance.database;
     final result = await db.query('records', orderBy: 'created_at DESC');

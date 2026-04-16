@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/emotion_record.dart';
 import '../services/database_service.dart';
+import '../services/achievement_service.dart';
 import '../utils/constants.dart';
 import '../providers/app_state_provider.dart';
 import 'detective_screen.dart';
@@ -59,6 +60,8 @@ class _RecordScreenState extends State<RecordScreen> {
 
     final db = DatabaseService.instance;
     final recordId = await db.insertRecord(record);
+
+    await AchievementService.instance.checkAndUnlockAchievements();
 
     final isPro = Provider.of<AppStateProvider>(context, listen: false).isPro;
 
