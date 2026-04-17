@@ -16,6 +16,7 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
   String _currentQuote = '';
   final TextEditingController _worryController = TextEditingController();
   bool _isShredding = false;
+  bool _isShredded = false;
 
   final List<String> _quotes = [
     "每一次呼吸，都是重新开始的机会 🌱",
@@ -38,6 +39,10 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
       vsync: this,
     )..repeat();
     _currentQuote = _quotes[math.Random().nextInt(_quotes.length)];
+
+    _worryController.addListener(() {
+      setState(() {});
+    });
   }
 
   @override
@@ -133,8 +138,6 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
     );
   }
 
-  // ... existing code ...
-
   Widget _buildBreathingExercise() {
     return Center(
       child: Column(
@@ -153,7 +156,7 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
             '4秒吸气 · 7秒屏息 · 8秒呼气',
             style: TextStyle(fontSize: 14, color: Colors.grey[600]),
           ),
-          SizedBox(height: 60),
+          SizedBox(height: 70),
           AnimatedBuilder(
             animation: _breathController,
             builder: (context, child) {
@@ -197,7 +200,7 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
                       ),
                     ),
                   ),
-                  SizedBox(height: 40),
+                  SizedBox(height: 70),
                   Text(
                     instruction,
                     style: TextStyle(
@@ -225,6 +228,10 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
   }
 
   Widget _buildWorryShredder() {
+    if (_isShredded) {
+      return _buildShreddedSuccess();
+    }
+
     return Padding(
       padding: EdgeInsets.all(24),
       child: Column(
@@ -244,31 +251,36 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
           ),
           SizedBox(height: 24),
           Expanded(
-            child: TextField(
-              controller: _worryController,
-              maxLines: null,
-              expands: true,
-              textAlignVertical: TextAlignVertical.top,
-              decoration: InputDecoration(
-                hintText: '把困扰你的事情写在这里...\n\n写完点击下方的按钮，看着它被粉碎',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
+            child: AnimatedOpacity(
+              opacity: _isShredding ? 0.3 : 1.0,
+              duration: Duration(milliseconds: 300),
+              child: TextField(
+                controller: _worryController,
+                maxLines: null,
+                expands: true,
+                textAlignVertical: TextAlignVertical.top,
+                decoration: InputDecoration(
+                  hintText: '把困扰你的事情写在这里...\n\n写完点击下方的按钮，看着它被粉碎',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: EdgeInsets.all(20),
                 ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: EdgeInsets.all(20),
+                enabled: !_isShredding,
               ),
-              enabled: !_isShredding,
             ),
           ),
           SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _isShredding || _worryController.text.isEmpty
+            onPressed: _worryController.text.trim().isEmpty || _isShredding
                 ? null
                 : _shredWorry,
             style: ElevatedButton.styleFrom(
               minimumSize: Size(double.infinity, 56),
               backgroundColor: _isShredding ? Colors.grey : Color(0xFFFF6B6B),
+              disabledBackgroundColor: Colors.grey[300],
               elevation: 0,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
@@ -287,13 +299,110 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
                         ),
                       ),
                       SizedBox(width: 12),
-                      Text('粉碎中...'),
+                      Text('粉碎中...', style: TextStyle(color: Colors.white)),
                     ],
                   )
                 : Text(
                     '🗑️ 粉碎烦恼',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShreddedSuccess() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          TweenAnimationBuilder(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: Duration(milliseconds: 600),
+            builder: (context, double value, child) {
+              return Transform.scale(
+                scale: value,
+                child: Opacity(
+                  opacity: value,
+                  child: Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Color(0xFF2DD4BF).withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.check_circle,
+                      size: 80,
+                      color: Color(0xFF2DD4BF),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: 32),
+          TweenAnimationBuilder(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: Duration(milliseconds: 800),
+            builder: (context, double value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.translate(
+                  offset: Offset(0, 20 * (1 - value)),
+                  child: Column(
+                    children: [
+                      Text(
+                        '烦恼已粉碎！',
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      SizedBox(height: 12),
+                      Text(
+                        '记住，你能掌控自己的情绪',
+                        style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: 48),
+          TweenAnimationBuilder(
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: Duration(milliseconds: 1000),
+            builder: (context, double value, child) {
+              return Opacity(
+                opacity: value,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    setState(() {
+                      _isShredded = false;
+                      _worryController.clear();
+                    });
+                  },
+                  icon: Icon(Icons.refresh),
+                  label: Text('再写一个'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF2DD4BF),
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -303,47 +412,13 @@ class _QuickReleaseScreenState extends State<QuickReleaseScreen>
   Future<void> _shredWorry() async {
     setState(() => _isShredding = true);
 
-    await Future.delayed(Duration(seconds: 2));
+    await Future.delayed(Duration(milliseconds: 1500));
 
     if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, size: 64, color: Color(0xFF2DD4BF)),
-              SizedBox(height: 16),
-              Text(
-                '烦恼已粉碎！',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 8),
-              Text(
-                '记住，你能掌控自己的情绪',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey[600]),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(ctx);
-                setState(() {
-                  _isShredding = false;
-                  _worryController.clear();
-                });
-              },
-              child: Text('好的', style: TextStyle(color: Color(0xFF2DD4BF))),
-            ),
-          ],
-        ),
-      );
+      setState(() {
+        _isShredding = false;
+        _isShredded = true;
+      });
     }
   }
 

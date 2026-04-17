@@ -4,7 +4,7 @@ import 'achievements_screen.dart';
 import 'emotion_growth_tree.dart';
 import '../models/achievement.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final int checkInStreak;
   final UserStats? userStats;
   final VoidCallback onCheckIn;
@@ -23,16 +23,44 @@ class DashboardScreen extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  _DashboardScreenState createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulseController = AnimationController(
+      duration: Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: () async => onRefresh(),
+        onRefresh: () async => widget.onRefresh(),
         color: Color(0xFF2DD4BF),
         child: SingleChildScrollView(
           physics: AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.all(20),
           child: FadeTransition(
-            opacity: fadeController,
+            opacity: widget.fadeController,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -41,7 +69,7 @@ class DashboardScreen extends StatelessWidget {
                 SizedBox(height: 24),
                 _buildQuickStats(),
                 SizedBox(height: 20),
-                _buildQuickReleaseCard(context),
+                _buildAnimatedQuickReleaseCard(context),
                 SizedBox(height: 16),
                 _buildGrowthProgress(context),
                 SizedBox(height: 16),
@@ -91,7 +119,10 @@ class DashboardScreen extends StatelessWidget {
           },
           child: ScaleTransition(
             scale: Tween<double>(begin: 1.0, end: 1.1).animate(
-              CurvedAnimation(parent: scaleController, curve: Curves.easeInOut),
+              CurvedAnimation(
+                parent: widget.scaleController,
+                curve: Curves.easeInOut,
+              ),
             ),
             child: Container(
               padding: EdgeInsets.all(12),
@@ -119,9 +150,9 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildQuickStats() {
-    final totalRecords = userStats?.totalRecords ?? 0;
-    final consecutiveDays = userStats?.consecutiveDays ?? 0;
-    final achievements = userStats?.totalAchievements ?? 0;
+    final totalRecords = widget.userStats?.totalRecords ?? 0;
+    final consecutiveDays = widget.userStats?.consecutiveDays ?? 0;
+    final achievements = widget.userStats?.totalAchievements ?? 0;
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: 4),
@@ -196,112 +227,137 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickReleaseCard(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => QuickReleaseScreen()),
+  Widget _buildAnimatedQuickReleaseCard(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _pulseAnimation.value,
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(
+                    0xFFFF9F43,
+                  ).withOpacity(0.4 + (_pulseAnimation.value - 1.0) * 2),
+                  blurRadius: 16 + (_pulseAnimation.value - 1.0) * 20,
+                  spreadRadius: (_pulseAnimation.value - 1.0) * 5,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: child,
+          ),
         );
       },
-      child: Container(
-        width: double.infinity,
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFFF9F43), Color(0xFFFF6B6B)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Color(0xFFFF9F43).withOpacity(0.4),
-              blurRadius: 16,
-              offset: Offset(0, 8),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => QuickReleaseScreen()),
+          );
+        },
+        child: Container(
+          width: double.infinity,
+          padding: EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFFFF9F43), Color(0xFFFF6B6B)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.flash_on, color: Colors.white, size: 24),
-                      SizedBox(width: 8),
-                      Text(
-                        '快速释放',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    '呼吸 · 宣泄 · 白噪音 · 冥想',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                  SizedBox(height: 12),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.25),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            Icon(Icons.flash_on, color: Colors.white, size: 24),
+                            SizedBox(width: 8),
+                            Text(
+                              '快速释放',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 8),
                         Text(
-                          '立即开始',
+                          '呼吸 · 宣泄 · 白噪音 · 冥想',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
+                            fontSize: 13,
+                            color: Colors.white.withOpacity(0.9),
                           ),
                         ),
-                        SizedBox(width: 4),
-                        Icon(
-                          Icons.arrow_forward,
-                          color: Colors.white,
-                          size: 18,
+                        SizedBox(height: 12),
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                '立即开始',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_forward,
+                                color: Colors.white,
+                                size: 18,
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
                   ),
+                  SizedBox(width: 16),
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: Colors.white,
+                      size: 40,
+                    ),
+                  ),
                 ],
               ),
-            ),
-            SizedBox(width: 16),
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                Icons.play_arrow_rounded,
-                color: Colors.white,
-                size: 40,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildGrowthProgress(BuildContext context) {
-    final totalRecords = userStats?.totalRecords ?? 0;
+    final totalRecords = widget.userStats?.totalRecords ?? 0;
     final treeStage = _getTreeStage(totalRecords);
     final treeName = _getTreeName(totalRecords);
     final nextMilestone = _getNextMilestone(totalRecords);
@@ -411,10 +467,10 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildCheckInCard() {
-    final canCheckInToday = checkInStreak >= 0;
+    final canCheckInToday = widget.checkInStreak >= 0;
 
     return GestureDetector(
-      onTap: onCheckIn,
+      onTap: widget.onCheckIn,
       child: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
@@ -472,7 +528,7 @@ class DashboardScreen extends StatelessWidget {
                       ),
                       SizedBox(width: 4),
                       Text(
-                        '已连续 $checkInStreak 天',
+                        '已连续 ${widget.checkInStreak} 天',
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.grey[700],
